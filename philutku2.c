@@ -158,7 +158,7 @@ void* philosopher_thread(void *argument)
 	 }
   }
 	
-// }
+}
 
 int main(int argc, char* argv[])
 {
@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
                 /* gets number of philosophers from command line*/
 		count = atoi(argv[1]);
 
-	srand((unsigned int)time(NULL));
+	srand(((unsigned int)time(NULL));
 	/* if arguments is invalid */ 
 	if (count<2 && count>1000)
                 /* replace with 5 */
