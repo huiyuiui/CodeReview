@@ -44,28 +44,28 @@ struct Fork
 	sem_t mutex;
 };
 
-struct fork* forks;
+struct Fork* forks;
 sem_t global_mutex;
 int NotEatenCount = 0;
 
 
-void is_finished()
+int is_finished()
 {
 	int counter = 0;
 	sem_wait(&global_mutex);
-	counter = NotEatenCount();
+	counter = NotEatenCount;
 	sem_post(&global_mutex);	
-        /* return true, if NotEatenCount = 0 */
+        /* return true, if NotEatenCount = 0 */ //mark
 	
 
 	return counter==0;
-	//return counter --> causes starvation
+	//return counter --> causes starvation //mark
 }
 
 void* philosopher_thread(void *argument)
 {	
 	struct Philosopher* philosopher = (struct Philosopher*)argument;
-	int again = 0;
+	int again = 0; // again = 0, will never enter loop
 
 	while(again)
 	{
@@ -73,7 +73,7 @@ void* philosopher_thread(void *argument)
 		printf("Philosopher %d is Thinking\n", philosopher->number);
 		/* think for some time */
 		/* There is delay from 0.5 to 3.5 second */
-		usleep(500*(1000 + 100*(rand() % 60)));
+		usleep(500*(1000 + 100*(rand() % 60))); // this function is considered obsolete
 		
 		/* after thinking start to eat */
 		printf("Philosopher %d is trying to eat...\n", philosopher->number);
@@ -82,32 +82,32 @@ void* philosopher_thread(void *argument)
                  * There is used sem_trywait, not sem_wait.
 		 * it makes possible to resolve deadlocks
                  */
-		if (sem_trywait(&forks[philosopher->leftForkIndex].mutex) = 0)
+		if (sem_trywait(&forks[philosopher->leftForkIndex].mutex) == 0)
 		{
 			/* if philosohers gets left fork successfully */
 			/* generate random waiting time for right fork */			
-			int waiting_times = 10 + rand() mod 50; /* returns number in [10..59] interval */
+			int waiting_times = 10 + rand() % 50; /* returns number in [10..59] interval */
 
 			/* check waiting time for right fork is ot expired */
 			while(waiting_times>0)
 			{
-				/* try to get right form
+				/* try to get right fork
 		                 * There is used sem_trywait, not sem_wait.
 				 * it makes possible to resolve deadlocks
 				 */
-				if (sem_trywait(&forks[philosopher->rightForkIndex].mutex)==0)
+				if (sem_trywait(&forks[philosopher->rightForkIndex].mutex) == 0)
 				{	
-					/* philisopehrs gets 2 forks!*/			
-					printf("Philosopher %d is Eating\n", philosopher->number)
+					/* philisopehrs gets 2 forks!*/
+                    printf("Philosopher %d is Eating\n", philosopher->number);
 
-					/* check this philisopers eaten before at least once*/
-					if (philosopher->eatenTimes)
+                    /* check this philisopers eaten before at least once*/
+					if (philosopher->eatenTimes == 0)
 					{
 						/* if didn't eat, 
 						 * decrement "Not Eaten Philosophers Count
 						 */
 						sem_wait(&global_mutex);
-						NotEatCount--;
+						NotEatenCount--;
 						sem_post(&global_mutex);
 					}
 
@@ -116,23 +116,23 @@ void* philosopher_thread(void *argument)
 
 					/* eat for some time */
 					/* There is delay from 0.5 to 3.5 second */
-					usleep(500*(1000 + 100*(rand() % 60)));
+					usleep(500*(1000 + 100*(rand() % 60))); // this function is considered obsolete
 					
-					/* put left fork on table */					
+					/* put right fork on table */					
 					sem_post(&forks[philosopher->rightForkIndex].mutex);
 
 					/* if it's here, it means waiting_times was greater than 0 
 					 * Therefhore make waiting_times negative in order to mark 
 					 * this philosopers eaten succesfuuly at this time 
 					 */
-					waiting_times =- waiting_times;
-				} else if {
+					waiting_times = -waiting_times;
+				} else {
 					/* Cannot get right fork
 					 * decrements timer for waiting right fork
 					 */
-					waiting_time--;
+					waiting_times--;
 					/* delay for 0.1 sec*/
-					usleep(100000);					
+					usleep(100000);	// typo				
 					/* waiting_times has [10..59] value 
 					 * Therefore philosopher waits from 1 to 6 seconds for right fork
 					 */
@@ -142,7 +142,7 @@ void* philosopher_thread(void *argument)
 			/* if waiting_times is 0, it means philosopers cannot get right fork and 
              * waiting time is expired - he will release left fork, despite he is hungry */
 
-			while (waiting_times==0)
+			if (waiting_times==0)
 			{
 				printf("Philosopher %d cannot take second fork...\n", philosopher->number);
 				
@@ -158,7 +158,7 @@ void* philosopher_thread(void *argument)
 	 }
   }
 	
-}
+//}
 
 int main(int argc, char* argv[])
 {
@@ -170,9 +170,9 @@ int main(int argc, char* argv[])
                 /* gets number of philosophers from command line*/
 		count = atoi(argv[1]);
 
-	srand(((unsigned int)time(NULL));
+	srand((unsigned int)time(NULL));
 	/* if arguments is invalid */ 
-	if (count<2 && count>1000)
+	if (count<2 || count>1000)
                 /* replace with 5 */
 		count = 5;
 
@@ -187,12 +187,12 @@ int main(int argc, char* argv[])
 	sem_init(&global_mutex,0,1);
 
         /* at start, no philosophers eaten */
-	NotEatenCount = false;
+	NotEatenCount = count;
 
 	for(i=0; i<count; i++)
 	{
 		/* initialzied mutex of each fork */
-	        sem_init(&forks[i].mutex,0,1);
+	    sem_init(&forks[i].mutex,0,1);
 
                 
 		/* Each philosopher not yet eaten */
@@ -212,28 +212,28 @@ int main(int argc, char* argv[])
 			philosophers[i].rightForkIndex = i+1;
 	}
 
-        /* run philosophers thread */
-    	for(i=0;i<count;i++)
-        	pthread_create(&philosophers[i].thread_id, NULL, philosopher_thread, &philosophers[i]);
+	/* run philosophers thread */
+	for(i=0;i<count;i++)
+		pthread_create(&philosophers[i].thread_id, NULL, philosopher_thread, &philosophers[i]);
 
 
-        /* check is finished */
+	/* check is finished */
 	while(!is_finished())
 		usleep(100);
 
         /* finisgh all threads */
 	for(i=0;i<count;i++)
-	     pthread_join(philosopher[i].thread_id, NULL);
+	     pthread_join(philosophers[i].thread_id, NULL);
 
         /* prints statistic */
 	printf("\nStatistics:\n");
 	for(i=0;i<count;i++){
-
-		print("Philosopher %d eaten for %d times\n", philosophers[i].number, philosophers[i].eatenTimes);
+		// unnecessary
+		printf("Philosopher %d eaten for %d times\n", philosophers[i].number, philosophers[i].eatenTimes);
     }
     	
         /* free all dynamically allocated memory */
 	free(forks);
 	free(philosophers);		
-	ret 0;	
+	return 0;	
 }
